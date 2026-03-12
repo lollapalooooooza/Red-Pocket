@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>命运之手 · 虚拟红包世界</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#08000D;overflow:hidden;font-family:'Noto Serif SC',serif;cursor:none}
+#cv{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1}
+
+/* ── UI LAYER ── */
+#ui{position:fixed;inset:0;pointer-events:none;z-index:5}
+
+/* Corners */
+.cd{position:absolute;width:52px;height:52px}
+.cd svg{width:100%;height:100%}
+.cd.tl{top:14px;left:14px}.cd.tr{top:14px;right:14px;transform:scaleX(-1)}
+.cd.bl{bottom:14px;left:14px;transform:scaleY(-1)}.cd.br{bottom:14px;right:14px;transform:scale(-1,-1)}
+
+/* Title */
+#title-area{position:absolute;top:22px;left:50%;transform:translateX(-50%);text-align:center}
+#mt{font-size:24px;font-weight:900;color:#FFD060;letter-spacing:10px;
+  text-shadow:0 0 20px rgba(255,170,0,.8),0 0 60px rgba(255,60,0,.3)}
+#st{font-size:9px;font-weight:300;color:rgba(255,180,60,.35);letter-spacing:9px;margin-top:3px;text-transform:uppercase}
+
+/* Fate bar */
+#fate-wrap{position:absolute;right:30px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:7px}
+.fl{font-size:9px;color:rgba(255,180,60,.4);letter-spacing:2px}
+#fate-track{width:3px;height:180px;background:rgba(255,160,0,.1);border-radius:2px;border:1px solid rgba(255,160,0,.18);position:relative;overflow:hidden}
+#fate-fill{position:absolute;bottom:0;width:100%;border-radius:2px;background:linear-gradient(to top,#FFD060,#FF5010,#CC0040);transition:height .9s cubic-bezier(.34,1.56,.64,1)}
+
+/* Counter */
+#ctr{position:absolute;left:30px;bottom:36px}
+#cnum{font-size:38px;font-weight:900;color:rgba(255,200,60,.75);line-height:1;text-shadow:0 0 20px rgba(255,140,0,.4)}
+#clbl{font-size:9px;color:rgba(255,180,60,.35);letter-spacing:3px;margin-top:2px}
+
+/* Hint */
+#hint{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,180,60,.3);letter-spacing:4px;transition:opacity .5s}
+
+/* Fate text */
+#fate-text{position:absolute;right:44px;top:50%;transform:translateY(calc(-50% - 100px));font-size:9px;color:rgba(255,180,60,.4);letter-spacing:2px;writing-mode:vertical-rl;text-orientation:upright}
+
+/* ── FORTUNE OVERLAY ── */
+#fov{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .6s ease}
+#fov.vis{opacity:1;pointer-events:all}
+#fveil{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(25,2,5,.97) 0%,rgba(5,0,10,.99) 100%)}
+
+/* Fortune card */
+#fcard{position:relative;z-index:10;width:min(440px,90vw);transform:translateY(50px) scale(.96);transition:transform .65s cubic-bezier(.34,1.56,.64,1)}
+#fov.vis #fcard{transform:translateY(0) scale(1)}
+
+.cpaper{padding:38px 34px 32px;position:relative;border-radius:3px;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(180,120,40,.5),0 0 0 3px rgba(130,80,20,.2),0 20px 80px rgba(0,0,0,.9),0 0 120px var(--tglow,rgba(255,160,0,.25))}
+.cpaper::before{content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,rgba(100,60,20,.04) 0px,transparent 1px),
+             repeating-linear-gradient(90deg,rgba(100,60,20,.04) 0px,transparent 1px);
+  background-size:8px 8px;pointer-events:none}
+
+/* Tier badge */
+.tbadge{display:block;width:100%;text-align:center;font-size:11px;font-weight:600;letter-spacing:5px;
+  padding:5px 0;border:1px solid;margin-bottom:20px;background:rgba(255,255,255,.08)}
+
+/* Headline */
+.fhl{font-size:26px;font-weight:900;text-align:center;line-height:1.4;margin-bottom:8px;color:#2A0808}
+/* Whisper */
+.fwh{font-size:12px;font-weight:300;text-align:center;letter-spacing:2px;margin-bottom:20px;font-style:italic;color:rgba(80,25,8,.6)}
+/* Divider */
+.fdiv{height:1px;background:linear-gradient(to right,transparent,rgba(180,90,20,.5),transparent);margin-bottom:18px}
+/* Body */
+.fbody{font-size:13.5px;line-height:1.95;text-align:justify;letter-spacing:.5px;color:#3A1205}
+/* Seal */
+.fseal{position:absolute;right:24px;bottom:22px;width:48px;height:48px;border:2px solid;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;transform:rotate(-15deg);opacity:.75}
+.fseal span{font-size:17px;font-weight:900}
+/* Num */
+.fnum{position:absolute;left:24px;bottom:28px;font-size:9px;letter-spacing:2px;color:rgba(100,45,15,.45)}
+/* Continue */
+.fcont{text-align:center;margin-top:24px;font-size:10px;letter-spacing:4px;animation:fblink 2s ease-in-out infinite}
+@keyframes fblink{0%,100%{opacity:.45;transform:translateY(0)}50%{opacity:.75;transform:translateY(-2px)}}
+
+/* Forbidden card special */
+.tier-forbidden .cpaper{background:linear-gradient(135deg,#180A28,#0E0518)}
+.tier-forbidden .fhl{color:#DDB8FF}
+.tier-forbidden .fwh{color:rgba(190,130,255,.55)}
+.tier-forbidden .fbody{color:#C0A0E8}
+.tier-forbidden .fdiv{background:linear-gradient(to right,transparent,rgba(160,80,220,.5),transparent)}
+
+/* Celestial card */
+.tier-celestial .cpaper{background:linear-gradient(135deg,#FDF8E8,#F0E0B0);
+  box-shadow:0 0 0 1px rgba(255,240,160,.8),0 0 0 3px rgba(255,200,60,.3),0 30px 100px rgba(0,0,0,.9),0 0 200px rgba(255,230,80,.5)}
+
+/* Card corners */
+.cc{position:absolute;width:22px;height:22px;border-style:solid;border-color:rgba(180,100,30,.45);border-width:0}
+.cc.tl{top:10px;left:10px;border-top-width:1.5px;border-left-width:1.5px}
+.cc.tr{top:10px;right:10px;border-top-width:1.5px;border-right-width:1.5px}
+.cc.bl{bottom:10px;left:10px;border-bottom-width:1.5px;border-left-width:1.5px}
+.cc.br{bottom:10px;right:10px;border-bottom-width:1.5px;border-right-width:1.5px}
+.tier-forbidden .cc{border-color:rgba(150,70,220,.45)}
+
+/* ── START SCREEN ── */
+#ss{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 55%,#1C0005,#08000D 70%);
+  z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;pointer-events:all}
+#ss::before{content:'福';position:absolute;font-size:44vw;font-weight:900;
+  color:rgba(180,10,0,.04);top:50%;left:50%;transform:translate(-50%,-50%);line-height:1;pointer-events:none}
+.sst{font-size:52px;font-weight:900;color:#FFD060;letter-spacing:16px;
+  text-shadow:0 0 40px rgba(255,170,0,.7),0 0 120px rgba(255,40,0,.3)}
+.ssb{font-size:11px;color:rgba(255,180,60,.4);letter-spacing:7px;margin-top:-4px}
+.ssd{font-size:11px;color:rgba(255,150,40,.22);letter-spacing:2px;margin-top:6px;text-align:center;max-width:380px;line-height:2.2}
+.ssbtn{margin-top:22px;padding:13px 52px;background:transparent;border:1px solid rgba(255,170,0,.55);
+  color:#FFD060;font-family:'Noto Serif SC',serif;font-size:14px;letter-spacing:7px;cursor:pointer;
+  transition:all .4s;position:relative;overflow:hidden}
+.ssbtn::after{content:'';position:absolute;inset:0;left:-100%;
+  background:linear-gradient(90deg,transparent,rgba(255,200,0,.1),transparent);transition:left .6s}
+.ssbtn:hover::after{left:100%}
+.ssbtn:hover{border-color:#FFD060;box-shadow:0 0 30px rgba(255,180,0,.35)}
+.ssor{font-size:9px;color:rgba(255,170,40,.22);letter-spacing:4px}
+.ssbtn2{padding:7px 28px;background:transparent;border:1px solid rgba(255,170,0,.18);
+  color:rgba(255,200,60,.32);font-family:'Noto Serif SC',serif;font-size:10px;letter-spacing:4px;cursor:pointer;transition:all .3s}
+.ssbtn2:hover{border-color:rgba(255,170,0,.4);color:rgba(255,220,80,.6)}
+
+/* Video */
+#vid{position:fixed;bottom:14px;right:14px;width:120px;height:90px;border-radius:5px;
+  border:1px solid rgba(255,160,0,.18);opacity:.38;z-index:20;transform:scaleX(-1)}
+
+/* Custom cursor */
+#cur{position:fixed;pointer-events:none;z-index:200;transform:translate(-50%,-50%);
+  width:36px;height:36px;border-radius:50%;border:1.5px solid rgba(255,200,80,.5);transition:width .15s,height .15s,border-color .15s}
+#cur.near{width:54px;height:54px;border-color:rgba(255,200,80,.85)}
+#cur.grab{width:28px;height:28px;border-color:rgba(255,100,0,.9);background:rgba(255,100,0,.08)}
+#cdot{position:fixed;pointer-events:none;z-index:201;transform:translate(-50%,-50%);
+  width:5px;height:5px;border-radius:50%;background:rgba(255,200,80,.8)}
+</style>
+</head>
+<body>
+
+<div id="ss">
+  <div class="sst">命运之手</div>
+  <div class="ssb">虚拟红包世界</div>
+  <div class="ssd">伸手，接住从天而降的缘分<br>每一个红包，都是命运给你的一封信</div>
+  <button class="ssbtn" onclick="boot()">开启摄像头 · BEGIN</button>
+  <div class="ssor">— 或 —</div>
+  <button class="ssbtn2" onclick="bootMouse()">鼠标模式 · Mouse Mode</button>
+</div>
+
+<canvas id="cv"></canvas>
+<video id="vid" playsinline muted></video>
+
+<div id="cur"></div>
+<div id="cdot"></div>
+
+<div id="ui">
+  <div class="cd tl"><svg viewBox="0 0 52 52" fill="none">
+    <path d="M3 49L3 3L49 3" stroke="rgba(255,160,0,.5)" stroke-width="1.5"/>
+    <path d="M3 26L12 26M26 3L26 12" stroke="rgba(255,160,0,.25)" stroke-width="1"/>
+    <circle cx="3" cy="3" r="2.5" fill="rgba(255,160,0,.65)"/>
+  </svg></div>
+  <div class="cd tr"><svg viewBox="0 0 52 52" fill="none">
+    <path d="M3 49L3 3L49 3" stroke="rgba(255,160,0,.5)" stroke-width="1.5"/>
+    <path d="M3 26L12 26M26 3L26 12" stroke="rgba(255,160,0,.25)" stroke-width="1"/>
+    <circle cx="3" cy="3" r="2.5" fill="rgba(255,160,0,.65)"/>
+  </svg></div>
+  <div class="cd bl"><svg viewBox="0 0 52 52" fill="none">
+    <path d="M3 49L3 3L49 3" stroke="rgba(255,160,0,.5)" stroke-width="1.5"/>
+    <path d="M3 26L12 26M26 3L26 12" stroke="rgba(255,160,0,.25)" stroke-width="1"/>
+    <circle cx="3" cy="3" r="2.5" fill="rgba(255,160,0,.65)"/>
+  </svg></div>
+  <div class="cd br"><svg viewBox="0 0 52 52" fill="none">
+    <path d="M3 49L3 3L49 3" stroke="rgba(255,160,0,.5)" stroke-width="1.5"/>
+    <path d="M3 26L12 26M26 3L26 12" stroke="rgba(255,160,0,.25)" stroke-width="1"/>
+    <circle cx="3" cy="3" r="2.5" fill="rgba(255,160,0,.65)"/>
+  </svg></div>
+
+  <div id="title-area"><div id="mt">命运之手</div><div id="st">Virtual Red Envelope · Destiny Metaphor</div></div>
+  <div id="fate-wrap">
+    <div class="fl">运</div>
+    <div id="fate-track"><div id="fate-fill" style="height:50%"></div></div>
+    <div class="fl">势</div>
+  </div>
+  <div id="fate-text">命运待定</div>
+  <div id="ctr"><div id="cnum">0</div><div id="clbl">封红包</div></div>
+  <div id="hint">点击红包 · 接住命运</div>
+</div>
+
+<div id="fov">
+  <div id="fveil"></div>
+  <div id="fcard"></div>
+</div>
+
+<script>
+"use strict";
+// ══════════════════════════════════════════
+//  CANVAS
+// ══════════════════════════════════════════
+const CV=document.getElementById('cv'),ctx=CV.getContext('2d');
+let W=0,H=0;
+const rsz=()=>{W=CV.width=innerWidth;H=CV.height=innerHeight;};
+rsz();addEventListener('resize',rsz);
+
+// ══════════════════════════════════════════
+//  FORTUNE DATABASE
+// ══════════════════════════════════════════
+const TC={
+  celestial:{nm:'天命',col:'#FFFAC8',glow:'rgba(255,250,160,.9)', rare:.04, fv:+.22, envColor:'#D4960A'},
+  great:    {nm:'大吉',col:'#FFE040',glow:'rgba(255,200,20,.8)',  rare:.10, fv:+.14, envColor:'#C01010'},
+  good:     {nm:'吉',  col:'#FFB030',glow:'rgba(255,155,20,.65)', rare:.28, fv:+.07, envColor:'#C01010'},
+  balance:  {nm:'平',  col:'#C0A878',glow:'rgba(190,160,100,.5)', rare:.32, fv:  0,  envColor:'#9A0C0C'},
+  warning:  {nm:'戒',  col:'#A04830',glow:'rgba(160,55,35,.65)',  rare:.16, fv:-.08, envColor:'#880808'},
+  forbidden:{nm:'凶',  col:'#9060C0',glow:'rgba(145,55,210,.8)',  rare:.10, fv:-.16, envColor:'#100018'},
+};
+
+const FDB=[
+  // ── 天命 ──
+  {t:'celestial',hl:'此刻存在，已是奇迹',wh:'在无数个可能的宇宙里，你选择了活着',body:'你是亿万年星尘聚合的产物，此刻的你，是宇宙认识自己的方式之一。不需要做更多——你的存在本身，已经是这个宇宙最精心的安排。'},
+  {t:'celestial',hl:'爱是唯一越给越多的东西',wh:'你的善意正在某处悄悄生根',body:'所有你曾给出的温柔，都在他人心中悄悄生长，而你永远不会知道它开了怎样的花。但它在开，一直在开，将来也会继续开。'},
+  {t:'celestial',hl:'你已经足够了',wh:'不需要再证明任何事情',body:'你一直在追寻某种"完整"，却不知道完整一直在你身上。那个追寻本身，已经是完整的一部分。此刻的你，就是此刻最完整的你。'},
+  // ── 大吉 ──
+  {t:'great',hl:'转机就在拐角处',wh:'你看不到，但它在等你',body:'你正站在人生的转折点上。此刻的疲惫与困惑，是新故事开始前的最后几行字。不要在最精彩的地方放下书。'},
+  {t:'great',hl:'那个让你辗转难眠的问题',wh:'明年此时你会笑着回答',body:'现在的答案还没有到来，但它已经在路上了。时间不是你的敌人——它是那个替你慢慢准备好答案的信使。'},
+  {t:'great',hl:'花开自有时',wh:'等待本身也是一种力量',body:'你播下的种子正在黑暗中生根。你感受不到它的生长，不代表它没有发生。沉默的土地里，正在酝酿某种让你惊喜的奇迹。'},
+  {t:'great',hl:'有人正因为你而更勇敢',wh:'你不知道，但那是真的',body:'你的一个举动，一句话，一次出现，改变了某人的某天，甚至某人的一生。你的影响，远比你想象中更广远、更深沉。'},
+  // ── 吉 ──
+  {t:'good',hl:'善意播下',wh:'即使你永远不知道它生根在哪里',body:'你的一个微笑、一个举动，正在某个你不知道的地方，改变着某人的某一天。善意不会消失，只在不同的心里流转。'},
+  {t:'good',hl:'你的等待有它的意义',wh:'季节知道该在何时到来',body:'不是所有的门都该现在打开。有些等待，是命运在为你腾出更好的空间，让你以更好的姿态走进去。'},
+  {t:'good',hl:'失去的，以另一种形式归来',wh:'宇宙不会浪费任何东西',body:'你以为失去了什么，其实只是它换了一种方式回到你身边——也许是智慧，也许是自由，也许是你自己。'},
+  {t:'good',hl:'你比你以为的更强大',wh:'你已经渡过了所有的最难时刻',body:'回顾你走过的路，那些你以为迈不过去的坎，你都迈过去了。你的韧性比你知道的更深，更广，更强。这一次也不例外。'},
+  {t:'good',hl:'有一扇门，正在为你保持开启',wh:'你快走到了',body:'不是所有的机遇都会鼓掌叫你进去。有些在等你，沉默地，耐心地，就在前方某处的转角。走过去，敲一敲。'},
+  // ── 平 ──
+  {t:'balance',hl:'此刻的困境，是门还是墙',wh:'只有你能决定',body:'命运不会告诉你答案，但它会不断给你机会重新选择。这是一道题——而出题人，希望你答对。'},
+  {t:'balance',hl:'有些路，越走越清晰',wh:'不必在起点就看到终点',body:'你现在看不到全局，这没关系。走下一步，再下一步，路会自己显现。就像夜行人，灯只需照亮脚下三步。'},
+  {t:'balance',hl:'你失去的，可能是别处的得到',wh:'万物皆流转',body:'命运的礼物从不消失，只在不同的人之间流转。你此刻的失去，也许正是某处悄悄发生的奇遇。'},
+  {t:'balance',hl:'你已改变，只是还未察觉',wh:'成长在你睡着时发生',body:'此刻的你，与一年前的你，已经大相径庭。只是你太靠近自己，所以看不见这个变化。但它是真实的，是你赢来的。'},
+  {t:'balance',hl:'不是所有的相遇都需要结局',wh:'有些，本来就是旅途本身',body:'不是所有的故事都有结尾，有些存在的意义就在于过程本身。感谢它发生过，然后，温柔地放手。'},
+  // ── 戒 ──
+  {t:'warning',hl:'你在等一个永远不会出现的许可',wh:'没有人会告诉你：你可以了',body:'你一直在等某个信号——等别人的认可，等完美的时机，等"准备好"的那一天。那一天是你给自己造的幻觉。行动本身，才是通往"准备好"的路。'},
+  {t:'warning',hl:'有些联结，再用力也留不住',wh:'放手也是一种爱',body:'你握得越紧，它流失得越快。学会放开，不是放弃，是允许事物以它本来的样子存在——包括它选择离开你这件事。'},
+  {t:'warning',hl:'你正在用别人的标准，衡量自己的人生',wh:'这场比赛的规则不是你定的',body:'当你停止和别人比较的那一刻，你才真正开始活着。你的路，不在别人的地图上。你要自己画一张。'},
+  {t:'warning',hl:'你的疲惫，不来自努力，来自不真实',wh:'有什么事情，你一直在假装',body:'你消耗最多精力的，不是你做了什么，而是你在假装某些事情，或者压抑某些真实的感受。停止假装，会比你想象的更轻松。'},
+  // ── 凶 (黑色信封·最深的智慧) ──
+  {t:'forbidden',hl:'你已经知道答案了',wh:'你只是还没有找到勇气',body:'内心深处，你早就清楚该怎么做，该说什么，该放下什么。你在等的，不是答案，是勇气。而此刻——它已经在这里了。'},
+  {t:'forbidden',hl:'你正在重复一个模式',wh:'因为熟悉让你感到安全',body:'同样的错误，同样的关系，同样的结局。不是命运在惩罚你，是你在无意识地寻找熟悉感，即使那种熟悉是痛苦。认出这个模式，是改变它的第一步。'},
+  {t:'forbidden',hl:'你忽视了一个一直在等你的人',wh:'也许，就是你自己',body:'你为别人付出了很多，但你上一次真正关心自己是什么时候？那个被你遗忘的人，也需要被温柔地看见，被认真地照料。'},
+  {t:'forbidden',hl:'你越来越不像你自己了',wh:'你有没有注意到',body:'在某个时间点，你开始扮演别人期待的角色，而那个真正的你，在角落里越来越安静。它还在，还在等你。去找它。'},
+];
+
+// ══════════════════════════════════════════
+//  PARTICLES
+// ══════════════════════════════════════════
+const PT=[];
+function addGold(x,y,n=6){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,s=1+Math.random()*3;
+    PT.push({tp:'g',x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1.5,l:1,r:1.8+Math.random()*3.5,h:40+Math.random()*20});
+  }
+}
+function addAsh(x,y,n=10){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,s=0.6+Math.random()*1.8;
+    PT.push({tp:'a',x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1.5,l:1,r:2+Math.random()*4,rot:Math.random()*Math.PI*2,sp:(Math.random()-.5)*.08});
+  }
+}
+function addInk(x,y){
+  for(let i=0;i<22;i++){
+    const a=Math.random()*Math.PI*2,s=.3+Math.random()*2.5;
+    PT.push({tp:'i',x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:1,r:5+Math.random()*14});
+  }
+}
+function addPetal(x,y,n=4){
+  for(let i=0;i<n;i++){
+    PT.push({tp:'p',x,y,vx:(Math.random()-.5)*1.5,vy:-.6-Math.random(),l:1,
+      r:2+Math.random()*3.5,rot:Math.random()*Math.PI*2,sp:(Math.random()-.5)*.04,h:Math.random()<.7?5:28});
+  }
+}
+function addBurst(x,y,col){
+  for(let i=0;i<30;i++){
+    const a=Math.random()*Math.PI*2,s=1+Math.random()*5;
+    PT.push({tp:'b',x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:1,r:2+Math.random()*5,col});
+  }
+}
+function updPT(dt){
+  for(let i=PT.length-1;i>=0;i--){
+    const p=PT[i];
+    p.x+=p.vx;p.y+=p.vy;p.vx*=.98;p.vy*=.98;
+    if(p.tp==='g'||p.tp==='p')p.vy+=.04;
+    if(p.rot!==undefined)p.rot+=p.sp;
+    p.l-=dt*(p.tp==='i'?1.6:p.tp==='b'?1.2:.65);
+    if(p.l<=0)PT.splice(i,1);
+  }
+}
+function drwPT(){
+  for(const p of PT){
+    ctx.save();
+    if(p.tp==='g'){
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r*p.l,0,Math.PI*2);
+      ctx.fillStyle=`hsla(${p.h},90%,72%,${p.l*.65})`;ctx.fill();
+    }else if(p.tp==='a'){
+      ctx.translate(p.x,p.y);ctx.rotate(p.rot);
+      ctx.beginPath();ctx.rect(-p.r*.5,-p.r*.3,p.r,p.r*.55);
+      ctx.fillStyle=`rgba(50,15,8,${p.l*.55})`;ctx.fill();
+    }else if(p.tp==='i'){
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r*(2-p.l),0,Math.PI*2);
+      ctx.fillStyle=`rgba(8,0,4,${p.l*.22})`;ctx.fill();
+    }else if(p.tp==='p'){
+      ctx.translate(p.x,p.y);ctx.rotate(p.rot);
+      ctx.beginPath();ctx.ellipse(0,0,p.r,p.r*.5,0,0,Math.PI*2);
+      ctx.fillStyle=`hsla(${p.h},82%,55%,${p.l*.45})`;ctx.fill();
+    }else if(p.tp==='b'){
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r*p.l,0,Math.PI*2);
+      ctx.fillStyle=p.col.replace(')',`,${p.l*.5})`).replace('rgb','rgba').replace('rgba(','rgba(');
+      // simpler:
+      ctx.fillStyle=`hsla(40,90%,70%,${p.l*.5})`;ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+// Ambient petals (always falling)
+const AMB=[];
+function updAMB(dt){
+  if(Math.random()<.05&&AMB.length<40)
+    AMB.push({x:Math.random()*W,y:-10,vx:(Math.random()-.5)*.5,vy:.3+Math.random()*.5,
+      r:1.5+Math.random()*3,rot:Math.random()*Math.PI*2,sp:(Math.random()-.5)*.03,
+      h:Math.random()<.65?5:38,al:.06+Math.random()*.1,id:Math.random()});
+  for(let i=AMB.length-1;i>=0;i--){
+    const a=AMB[i];
+    a.x+=a.vx+Math.sin(Date.now()*.0005+a.id*10)*.25;a.y+=a.vy;a.rot+=a.sp;
+    if(a.y>H+20)AMB.splice(i,1);
+  }
+}
+function drwAMB(){
+  for(const a of AMB){
+    ctx.save();ctx.translate(a.x,a.y);ctx.rotate(a.rot);
+    ctx.beginPath();ctx.ellipse(0,0,a.r,a.r*.5,0,0,Math.PI*2);
+    ctx.fillStyle=`hsla(${a.h},78%,52%,${a.al})`;ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ══════════════════════════════════════════
+//  CONSTELLATION (fate map)
+// ══════════════════════════════════════════
+const CONS=[];
+function addConsDot(fortune){
+  const ang=Math.random()*Math.PI*2;
+  const r=90+Math.random()*Math.min(W,H)*.32;
+  const cfg=TC[fortune.t];
+  CONS.push({x:W/2+Math.cos(ang)*r,y:H/2+Math.sin(ang)*r,
+    sz:fortune.t==='celestial'?4:fortune.t==='great'?3:1.8,
+    col:cfg.col,al:0,tal:.4+Math.random()*.45,twk:Math.random()*Math.PI*2});
+}
+function drwCons(){
+  for(const d of CONS){
+    d.al=Math.min(d.tal,d.al+.003);d.twk+=.018;
+    const tw=.78+Math.sin(d.twk)*.22,a=d.al*tw;
+    ctx.beginPath();ctx.arc(d.x,d.y,d.sz,0,Math.PI*2);
+    ctx.fillStyle=d.col+Math.round(a*255).toString(16).padStart(2,'0');ctx.fill();
+    // glow for bigger dots
+    if(d.sz>2){
+      const g=ctx.createRadialGradient(d.x,d.y,0,d.x,d.y,d.sz*5);
+      g.addColorStop(0,d.col+Math.round(a*.4*255).toString(16).padStart(2,'0'));
+      g.addColorStop(1,'transparent');
+      ctx.beginPath();ctx.arc(d.x,d.y,d.sz*5,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+    }
+  }
+  // Draw lines between nearby dots
+  if(CONS.length>1){
+    for(let i=0;i<CONS.length-1;i++)for(let j=i+1;j<CONS.length;j++){
+      const a=CONS[i],b=CONS[j];
+      const d=Math.hypot(a.x-b.x,a.y-b.y);
+      if(d<160){
+        const al=Math.min(a.al,b.al)*.18*(1-d/160);
+        ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+        ctx.strokeStyle=`rgba(255,200,80,${al})`;ctx.lineWidth=.6;ctx.stroke();
+      }
+    }
+  }
+}
+
+// ══════════════════════════════════════════
+//  ENVELOPE DRAWING
+// ══════════════════════════════════════════
+const EW=68,EH=86;
+const ECHARS=['福','禄','寿','财','喜'];
+function rrect(x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+}
+
+function drawEnv(e){
+  const {x,y,ang,sc,hov,op,tier,char:ec}=e;
+  const isFB=tier==='forbidden';
+  const hw=EW/2,hh=EH/2;
+  const cfg=TC[tier];
+
+  ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.scale(sc,sc);
+
+  // Hover aura
+  if(hov>0.01){
+    const ag=ctx.createRadialGradient(0,0,0,0,0,85);
+    ag.addColorStop(0,isFB?`rgba(160,60,255,${hov*.3})`:`rgba(255,165,0,${hov*.3})`);
+    ag.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(0,0,85,0,Math.PI*2);ctx.fillStyle=ag;ctx.fill();
+  }
+
+  // Shadow
+  ctx.shadowColor='rgba(0,0,0,.7)';ctx.shadowBlur=20+hov*10;ctx.shadowOffsetY=8;
+
+  // Body
+  rrect(-hw,-hh,EW,EH,5);
+  ctx.fillStyle=isFB?'#0C0018':cfg.envColor;ctx.fill();
+  ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+
+  // Body gradient sheen
+  const bgr=ctx.createLinearGradient(-hw,-hh,hw,hh);
+  bgr.addColorStop(0,isFB?'rgba(200,80,255,.12)':'rgba(255,120,10,.2)');
+  bgr.addColorStop(.5,'transparent');bgr.addColorStop(1,'rgba(0,0,0,.28)');
+  rrect(-hw,-hh,EW,EH,5);ctx.fillStyle=bgr;ctx.fill();
+
+  // Gold border
+  rrect(-hw+2,-hh+2,EW-4,EH-4,4);
+  ctx.strokeStyle=isFB?'rgba(170,80,255,.7)':'#FFD060';ctx.lineWidth=2;ctx.stroke();
+  // Inner border
+  rrect(-hw+5,-hh+5,EW-10,EH-10,3);
+  ctx.strokeStyle=isFB?'rgba(150,60,220,.35)':'rgba(255,195,55,.32)';ctx.lineWidth=.7;ctx.stroke();
+
+  // ── FLAP ──
+  if(op<.85){
+    const t=Math.min(1,op/.85);
+    // Closed flap is a diamond pointing down from top edge
+    // As t→1 the peak rises (opens)
+    const peakY=-hh+22*(1-t); // peak drops to 22 when closed, rises to 0 when open
+    if(t<.5){
+      // Flap visible
+      ctx.beginPath();
+      ctx.moveTo(-hw,-hh+2);ctx.lineTo(0,peakY);ctx.lineTo(hw,-hh+2);
+      ctx.lineTo(hw,-hh+Math.max(0,22*(1-t)*1.5));ctx.lineTo(-hw,-hh+Math.max(0,22*(1-t)*1.5));
+      ctx.closePath();
+      ctx.fillStyle=isFB?'#0F0022':'#A80A0A';ctx.fill();
+      ctx.strokeStyle=isFB?'rgba(170,70,255,.55)':'rgba(255,185,45,.6)';ctx.lineWidth=1.2;ctx.stroke();
+    }else{
+      // Flap opening – show inner light
+      const lt=((t-.5)/.5);
+      const ig=ctx.createLinearGradient(-hw,-hh,hw,-hh+28);
+      ig.addColorStop(0,isFB?`rgba(200,120,255,${lt*.35})`:`rgba(255,248,200,${lt*.55})`);
+      ig.addColorStop(1,'transparent');
+      rrect(-hw+2,-hh+2,EW-4,EH*.38,3);ctx.fillStyle=ig;ctx.fill();
+    }
+  }else{
+    // Fully open glow interior
+    const ig=ctx.createLinearGradient(-hw,-hh,hw,-hh+32);
+    ig.addColorStop(0,isFB?'rgba(190,100,255,.3)':'rgba(255,245,195,.55)');
+    ig.addColorStop(1,'transparent');
+    rrect(-hw+2,-hh+2,EW-4,EH*.4,3);ctx.fillStyle=ig;ctx.fill();
+  }
+
+  // ── Central character ──
+  if(op<.3){
+    const calpha=1-op/.3;
+    ctx.font='bold 34px "Noto Serif SC"';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.shadowColor=isFB?`rgba(200,100,255,${calpha*.8})`:`rgba(255,190,0,${calpha*.8})`;
+    ctx.shadowBlur=14;
+    ctx.fillStyle=isFB?`rgba(210,140,255,${calpha})`:`rgba(255,215,60,${calpha})`;
+    ctx.fillText(ec,0,8);
+    ctx.shadowBlur=0;
+  }
+
+  // ── Seal ──
+  ctx.beginPath();ctx.arc(0,hh-15,9,0,Math.PI*2);
+  ctx.strokeStyle=isFB?'rgba(175,80,255,.6)':'rgba(255,205,55,.6)';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.beginPath();ctx.arc(0,hh-15,6,0,Math.PI*2);
+  ctx.fillStyle=isFB?'rgba(180,80,255,.18)':'rgba(255,200,0,.2)';ctx.fill();
+
+  // Hover sparkle ring
+  if(hov>.4){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const a=(i/n)*Math.PI*2+Date.now()*.0012;
+      const rr=Math.hypot(hw,hh)+8+hov*7;
+      ctx.beginPath();ctx.arc(Math.cos(a)*rr*.9,Math.sin(a)*rr*.62,1.8,0,Math.PI*2);
+      ctx.fillStyle=isFB?`rgba(210,140,255,${hov*.7})`:`rgba(255,235,80,${hov*.7})`;ctx.fill();
+    }
+  }
+
+  ctx.restore();
+}
+
+// ══════════════════════════════════════════
+//  RED ENVELOPE CLASS
+// ══════════════════════════════════════════
+let envCount=0;
+function pickTier(){
+  let r=Math.random(),acc=0;
+  for(const[k,v]of Object.entries(TC)){acc+=v.rare;if(r<acc)return k;}
+  return'good';
+}
+function pickFortune(tier){
+  const pool=FDB.filter(f=>f.t===tier);
+  return pool.length?pool[Math.floor(Math.random()*pool.length)]:FDB[Math.floor(Math.random()*FDB.length)];
+}
+
+class Env{
+  constructor(){
+    this.id=Math.random();
+    this.tier=pickTier();
+    this.cfg=TC[this.tier];
+    this.char=ECHARS[Math.floor(Math.random()*5)];
+    this.fortune=pickFortune(this.tier);
+    this.x=80+Math.random()*(W-160);
+    this.y=-110;
+    this.vx=(Math.random()-.5)*.55;
+    this.vy=.35+Math.random()*.45;
+    this.ang=(Math.random()-.5)*.45;
+    this.spin=(Math.random()-.5)*.006;
+    this.sc=1;this.hov=0;this.op=0;
+    this.state='float'; // float|hover|fly|open|gone
+    this.flyT=0;this.sx=this.x;this.sy=this.y;
+  }
+  update(dt,cur){
+    if(this.state==='gone')return;
+    if(this.state==='float'||this.state==='hover'){
+      this.x+=this.vx+Math.sin(Date.now()*.0004+this.id*8)*.3;
+      this.y+=this.vy;this.ang+=this.spin;
+      const d=Math.hypot(cur.x-this.x,cur.y-this.y);
+      this.hov+=dt*(d<85?3.5:-2.5);this.hov=Math.max(0,Math.min(1,this.hov));
+      this.state=this.hov>.05?'hover':'float';
+      if(this.y>H+110){this.state='gone';addAsh(this.x,H+30);}
+    }
+    if(this.state==='fly'){
+      this.flyT+=dt*2;const t=Math.min(1,this.flyT);
+      const e=1-Math.pow(1-t,3);
+      this.x=this.sx+(W/2-this.sx)*e;this.y=this.sy+(H/2-this.sy)*e;
+      this.ang*=.88;this.sc=1+e*.5;
+      if(t>=1){this.state='open';this.op=0;}
+    }
+    if(this.state==='open'){
+      this.op+=dt*1.3;
+      if(this.op>=1){this.op=1;this.state='reveal';}
+    }
+    if(this.state==='reveal'){/* hold */}
+    if(this.state==='fade'){
+      this.sc-=dt*1.5;this.hov-=dt*3;
+      if(this.sc<=0)this.state='gone';
+    }
+  }
+  catch(){
+    if(this.state!=='float'&&this.state!=='hover')return false;
+    this.state='fly';this.sx=this.x;this.sy=this.y;this.flyT=0;
+    addGold(this.x,this.y,10);addPetal(this.x,this.y,6);
+    return true;
+  }
+  dismiss(){this.state='fade';}
+  draw(){if(this.state==='gone')return;drawEnv(this);}
+}
+
+// ══════════════════════════════════════════
+//  FORTUNE REVEAL
+// ══════════════════════════════════════════
+let catchNum=0,fateVal=.5,typerTmr=null;
+
+function showFortune(f){
+  catchNum++;
+  document.getElementById('cnum').textContent=catchNum;
+  addConsDot(f);
+
+  // Fate update
+  fateVal=Math.max(0,Math.min(1,fateVal+TC[f.t].fv));
+  document.getElementById('fate-fill').style.height=(fateVal*100)+'%';
+  // Fate text
+  const ft=fateVal>.82?'天运大开':fateVal>.62?'运势向好':fateVal>.42?'命运待定':fateVal>.22?'运势偏弱':'命途多舛';
+  document.getElementById('fate-text').textContent=ft;
+
+  const cfg=TC[f.t],isFB=f.t==='forbidden';
+  const fov=document.getElementById('fov'),fcard=document.getElementById('fcard');
+
+  const bgPaper=isFB
+    ?'background:linear-gradient(135deg,#1A0A2A,#0E0520)'
+    :f.t==='celestial'
+      ?'background:linear-gradient(135deg,#FDF8E8,#EDD8A8)'
+      :'background:linear-gradient(135deg,#F5E8CC,#E8D099)';
+  const txtMain=isFB?'#DDB8FF':f.t==='celestial'?'#1A0802':'#2A0808';
+  const txtWh=isFB?'rgba(190,130,255,.55)':f.t==='celestial'?'rgba(60,20,5,.58)':'rgba(80,28,8,.6)';
+  const txtBody=isFB?'#C0A0E8':f.t==='celestial'?'#2A0A05':'#3A1205';
+  const sealChar=isFB?'凶':f.t==='celestial'?'天':'福';
+
+  fcard.className=`tier-${f.t}`;
+  fcard.innerHTML=`
+    <div class="cpaper" style="--tglow:${cfg.glow};${bgPaper}">
+      <div class="cc tl"></div><div class="cc tr"></div><div class="cc bl"></div><div class="cc br"></div>
+      <div class="tbadge" style="color:${cfg.col};border-color:${cfg.col}">${cfg.nm}</div>
+      <div class="fhl" style="color:${txtMain}">${f.hl}</div>
+      <div class="fwh" style="color:${txtWh}">「${f.wh}」</div>
+      <div class="fdiv" ${isFB?'style="background:linear-gradient(to right,transparent,rgba(160,80,220,.5),transparent)"':''}></div>
+      <div class="fbody" id="fbody" style="color:${txtBody}"></div>
+      <div class="fseal" style="border-color:${isFB?'rgba(160,80,255,.75)':'rgba(175,45,25,.7)'}">
+        <span style="color:${isFB?'rgba(200,110,255,.9)':'rgba(175,45,25,.85)'}">${sealChar}</span>
+      </div>
+      <div class="fnum" style="color:${isFB?'rgba(170,120,255,.45)':'rgba(100,45,15,.45)'}">#${String(catchNum).padStart(3,'0')}</div>
+      <p class="fcont" style="color:${isFB?'rgba(180,120,255,.5)':'rgba(100,55,20,.5)'}">点击任意处继续 · Click to continue</p>
+    </div>`;
+
+  if(typerTmr)clearInterval(typerTmr);
+  fov.classList.add('vis');
+
+  // Typewriter
+  const bodyEl=document.getElementById('fbody'),txt=f.body;
+  let ci=0;
+  typerTmr=setInterval(()=>{bodyEl.textContent=txt.slice(0,ci++);if(ci>txt.length)clearInterval(typerTmr);},55);
+
+  // Screen flash
+  const fl=document.createElement('div');
+  fl.style=`position:fixed;inset:0;background:${cfg.glow};z-index:49;pointer-events:none;animation:flashFade .6s ease forwards`;
+  document.body.appendChild(fl);
+  setTimeout(()=>fl.remove(),700);
+
+  fov.onclick=dismiss;
+}
+
+function dismiss(){
+  clearInterval(typerTmr);
+  const fov=document.getElementById('fov');
+  fov.classList.remove('vis');fov.onclick=null;
+  for(const e of envs){if(e.state==='reveal'||e.state==='open')e.dismiss();}
+  activeEnv=null;
+}
+
+// CSS flash
+const fStyle=document.createElement('style');
+fStyle.textContent='@keyframes flashFade{0%{opacity:.5}100%{opacity:0}}';
+document.head.appendChild(fStyle);
+
+// ══════════════════════════════════════════
+//  MAIN STATE
+// ══════════════════════════════════════════
+const envs=[];
+let lastT=0,spawnT=0,activeEnv=null;
+const SINTERVAL=2.8;
+
+const cursor={x:W/2,y:H/2,grab:false};
+const curEl=document.getElementById('cur'),dotEl=document.getElementById('cdot');
+
+function tryPop(){
+  // Called when 'reveal' state reached
+  for(const e of envs){
+    if(e.state==='reveal'){
+      e.state='shown';
+      showFortune(e.fortune);
+      addGold(W/2,H/2,20);
+      if(e.tier==='forbidden')addInk(W/2,H/2);
+      if(e.tier==='celestial')addBurst(W/2,H/2,'rgba(255,250,150,.8)');
+      break;
+    }
+  }
+}
+
+function frame(ts){
+  const dt=Math.min((ts-lastT)/1000,.05);lastT=ts;
+
+  // Spawn
+  spawnT+=dt;
+  if(spawnT>SINTERVAL&&envs.filter(e=>e.state!=='gone').length<7){
+    envs.push(new Env());spawnT=0;spawnT-=(Math.random()-.5)*1.5;
+  }
+  if(envs.length>30)envs.splice(0,envs.length-30);
+
+  updPT(dt);updAMB(dt);
+  for(const e of envs)e.update(dt,cursor);
+  tryPop();
+
+  // ── RENDER ──
+  ctx.fillStyle='#08000D';ctx.fillRect(0,0,W,H);
+  // Warm radial
+  const bg=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*.65);
+  bg.addColorStop(0,'rgba(35,4,2,.6)');bg.addColorStop(.7,'rgba(18,0,10,.3)');bg.addColorStop(1,'transparent');
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+
+  // Fate influence tint
+  if(fateVal<.25){
+    const dt2=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*.5);
+    dt2.addColorStop(0,'transparent');dt2.addColorStop(1,`rgba(80,0,0,${(.25-fateVal)*0.3})`);
+    ctx.fillStyle=dt2;ctx.fillRect(0,0,W,H);
+  }else if(fateVal>.75){
+    const gt=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*.5);
+    gt.addColorStop(0,`rgba(40,25,0,${(fateVal-.75)*0.25})`);gt.addColorStop(1,'transparent');
+    ctx.fillStyle=gt;ctx.fillRect(0,0,W,H);
+  }
+
+  drwCons();
+  drwAMB();
+  drwPT();
+
+  // Sort: flying/open on top
+  const order={float:0,hover:1,fly:2,open:3,reveal:4,shown:5,fade:6,gone:-1};
+  const srt=[...envs].sort((a,b)=>(order[a.state]||0)-(order[b.state]||0));
+  for(const e of srt)e.draw();
+
+  // Cursor aura
+  const ca=ctx.createRadialGradient(cursor.x,cursor.y,0,cursor.x,cursor.y,cursor.grab?45:25);
+  ca.addColorStop(0,cursor.grab?'rgba(255,120,0,.18)':'rgba(255,200,80,.12)');ca.addColorStop(1,'transparent');
+  ctx.beginPath();ctx.arc(cursor.x,cursor.y,cursor.grab?45:25,0,Math.PI*2);ctx.fillStyle=ca;ctx.fill();
+
+  requestAnimationFrame(frame);
+}
+
+// ══════════════════════════════════════════
+//  INPUT
+// ══════════════════════════════════════════
+function moveCursor(x,y){
+  cursor.x=x;cursor.y=y;
+  curEl.style.left=x+'px';curEl.style.top=y+'px';
+  dotEl.style.left=x+'px';dotEl.style.top=y+'px';
+  const near=envs.some(e=>(e.state==='float'||e.state==='hover')&&Math.hypot(x-e.x,y-e.y)<90);
+  curEl.className=near?'near':cursor.grab?'grab':'';
+}
+function doGrab(x,y){
+  if(document.getElementById('fov').classList.contains('vis'))return;
+  cursor.grab=true;curEl.className='grab';
+  let cl=null,md=100;
+  for(const e of envs){
+    if(e.state!=='float'&&e.state!=='hover')continue;
+    const d=Math.hypot(x-e.x,y-e.y);if(d<md){md=d;cl=e;}
+  }
+  if(cl&&cl.catch()){activeEnv=cl;document.getElementById('hint').textContent='感受命运的指引…';}
+  setTimeout(()=>{cursor.grab=false;curEl.className='';},220);
+}
+
+addEventListener('mousemove',e=>moveCursor(e.clientX,e.clientY));
+addEventListener('click',e=>doGrab(e.clientX,e.clientY));
+
+// ══════════════════════════════════════════
+//  MEDIAPIPE
+// ══════════════════════════════════════════
+function loadMP(video){
+  let n=0;const done=()=>{if(++n===2)setupMP(video);};
+  const s1=document.createElement('script');
+  s1.src='https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js';
+  s1.crossOrigin='anonymous';s1.onload=done;document.head.appendChild(s1);
+  const s2=document.createElement('script');
+  s2.src='https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js';
+  s2.crossOrigin='anonymous';s2.onload=done;document.head.appendChild(s2);
+}
+let wasPinch=false;
+function setupMP(video){
+  if(typeof Hands==='undefined')return;
+  const hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${f}`});
+  hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:.65,minTrackingConfidence:.5});
+  hands.onResults(res=>{
+    const lm=res.multiHandLandmarks;
+    if(!lm||!lm[0])return;
+    const m=lm[0],w=m[0],th=m[4],ix=m[8];
+    const hx=(1-w.x)*W,hy=w.y*H;
+    moveCursor(hx,hy);
+    const pd=Math.hypot((1-th.x)*W-(1-ix.x)*W,th.y*H-ix.y*H);
+    const pinch=pd<55;
+    if(pinch&&!wasPinch)doGrab(hx,hy);
+    else if(!pinch&&wasPinch&&document.getElementById('fov').classList.contains('vis'))dismiss();
+    wasPinch=pinch;
+  });
+  if(typeof Camera!=='undefined')
+    new Camera(video,{onFrame:async()=>{await hands.send({image:video});},width:640,height:480}).start();
+}
+
+// ══════════════════════════════════════════
+//  BOOT
+// ══════════════════════════════════════════
+async function boot(){
+  document.getElementById('ss').style.display='none';
+  const video=document.getElementById('vid');
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user'}});
+    video.srcObject=s;await video.play();
+    loadMP(video);
+    startWorld();
+  }catch(e){bootMouse();}
+}
+function bootMouse(){
+  document.getElementById('ss').style.display='none';
+  document.getElementById('hint').textContent='点击红包 · 接住命运';
+  startWorld();
+}
+function startWorld(){
+  // Spawn 2 immediately for atmosphere
+  envs.push(new Env());envs[0].y=H*.25;
+  setTimeout(()=>{if(envs.length<3)envs.push(new Env());envs[envs.length-1].y=H*.55;},600);
+  spawnT=SINTERVAL*.55;
+  requestAnimationFrame(ts=>{lastT=ts;frame(ts);});
+}
+</script>
+</body>
+</html>
